@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import type {
   Application,
+  HistoryEventList,
   Proceeding,
 } from "#src/adaptors/models/application.types.js";
 import type { ApplicationPort } from "#src/ports/inquests-api/applications/ApplicationAPI/ApplicationAPI.port.js";
@@ -9,7 +10,7 @@ import { BuildApplicationOverviewViewUseCase } from "#src/use-cases/applications
 import { BuildCertificateViewUseCase } from "#src/use-cases/applications/overview/BuildCertificateView.useCase.js";
 import { TECHNICAL_FAILURE_REASONS } from "#src/use-cases/common/useCaseResult.types.js";
 import { formatCurrency } from "#src/utils/formatter.js";
-import { formatDate } from "#src/utils/dateFormatter.js";
+import { formatDate, formatDateTime } from "#src/utils/dateFormatter.js";
 import {
   escapeHtml,
   formatAddressToHtml,
@@ -85,6 +86,10 @@ export class ApplicationAdaptor {
     const { clientCorrespondenceAddressDisplay, careOfRecipientDisplay } =
       getCorrespondenceDisplay(application, clientHomeAddressDisplay);
 
+    const { historyRows, hasHistory } = formatHistoryRows(
+      overviewViewResult.data.history,
+    );
+
     const isPending =
       !application.overallDecision ||
       application.overallDecision.toUpperCase() === "PENDING";
@@ -99,6 +104,8 @@ export class ApplicationAdaptor {
       clientCorrespondenceAddressDisplay,
       careOfRecipientDisplay,
       statusTag,
+      historyRows,
+      hasHistory,
       backUrl: "/",
     });
   }
@@ -387,4 +394,28 @@ function getCorrespondenceDisplay(
       : "Not provided",
     careOfRecipientDisplay,
   };
+}
+
+function formatHistoryRows(history: HistoryEventList): {
+  historyRows: Array<Array<{ text?: string; html?: string }>>;
+  hasHistory: boolean;
+} {
+  if (history.length === 0) {
+    return { historyRows: [], hasHistory: false };
+  }
+
+  const historyRows = history.map((event) => {
+    const timestamp = formatDateTime(event.timestamp);
+    const actor = escapeHtml(event.actor);
+    const eventDescriptionHtml = `<strong>${escapeHtml(event.eventDescription)}</strong>`;
+    const eventDataHtml =
+      event.eventData && event.eventData.trim().length > 0
+        ? ` ${escapeHtml(event.eventData)}`
+        : "";
+    const update = eventDescriptionHtml + eventDataHtml;
+
+    return [{ text: timestamp }, { text: actor }, { html: update }];
+  });
+
+  return { historyRows, hasHistory: true };
 }

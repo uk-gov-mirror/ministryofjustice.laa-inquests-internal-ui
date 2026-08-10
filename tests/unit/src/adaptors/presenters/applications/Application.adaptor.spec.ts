@@ -149,6 +149,7 @@ describe("Application adaptor", () => {
       status: "SUCCESS",
       data: certificateDetails,
     });
+    viewApplicationAdaptorStub.getApplicationHistory.resolves([]);
     applicationAdaptor = new ApplicationAdaptor(
       viewApplicationAdaptorStub,
       undefined,
